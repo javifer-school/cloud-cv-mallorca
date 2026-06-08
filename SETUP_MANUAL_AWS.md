@@ -13,8 +13,8 @@ Región recomendada: **us-east-1 (N. Virginia)**
 4. [Conectar API Gateway con Lambda](#4-conectar-api-gateway-con-lambda)
 5. [Desplegar la API](#5-desplegar-la-api)
 6. [AWS Amplify — Hosting del frontend](#6-aws-amplify--hosting-del-frontend)
-7. [Alternativa: S3 Static Website](#7-alternativa-s3-static-website)
-8. [Verificación final](#8-verificación-final)
+7. [Verificación final](#7-verificación-final)
+8. [Route 53 — Subdominio `cv.atercates.cat` y registro MX](#8-route-53--subdominio-cvatercatescat-y-registro-mx)
 
 ---
 
@@ -315,90 +315,7 @@ A partir de ahora, cada `git push` a la rama `main` desencadena un redespliegue 
 
 ---
 
-## 7. Alternativa: S3 Static Website
-
-Si no tienes token de GitHub o prefieres no usar Amplify, puedes alojar el frontend directamente en S3.
-
-### 7.1 Preparar el código frontend
-
-Antes de subir los archivos, sustituye el placeholder en `counter.js`:
-
-```bash
-# En tu máquina local, reemplaza la URL
-sed -i "s|__API_ENDPOINT__|https://<API_ID>.execute-api.us-east-1.amazonaws.com/prod/visites|g" frontend/js/counter.js
-```
-
-### 7.2 Crear el bucket S3
-
-**Servicio:** `S3` → **Crear bucket**
-
-| Campo | Valor |
-|-------|-------|
-| Nombre del bucket | `cloud-cv-mallorca-frontend-<ACCOUNT_ID>` |
-| Región | `us-east-1` |
-| Bloquear todo el acceso público | **Desactivado** (desmarca la casilla) |
-
-Confirma el aviso sobre acceso público. Haz clic en **Crear bucket**.
-
-### 7.3 Habilitar hosting estático
-
-Entra en el bucket → pestaña **Propiedades** → **Alojamiento de sitios web estáticos** → **Editar**
-
-| Campo | Valor |
-|-------|-------|
-| Alojamiento de sitios web estáticos | **Habilitado** |
-| Tipo de alojamiento | Alojar un sitio web estático |
-| Documento de índice | `index.html` |
-| Documento de error | `index.html` |
-
-Guarda los cambios.
-
-### 7.4 Política de acceso público
-
-Pestaña **Permisos** → **Política de bucket** → **Editar** → pega:
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "PublicReadGetObject",
-      "Effect": "Allow",
-      "Principal": "*",
-      "Action": "s3:GetObject",
-      "Resource": "arn:aws:s3:::cloud-cv-mallorca-frontend-<ACCOUNT_ID>/*"
-    }
-  ]
-}
-```
-
-Reemplaza `<ACCOUNT_ID>` con tu ID de cuenta AWS. Guarda los cambios.
-
-### 7.5 Subir los archivos del frontend
-
-Pestaña **Objetos** → **Cargar** → sube los siguientes archivos respetando la estructura:
-
-| Archivo local | Ruta en S3 | Content-Type |
-|---------------|------------|--------------|
-| `frontend/index.html` | `index.html` | `text/html` |
-| `frontend/css/style.css` | `css/style.css` | `text/css` |
-| `frontend/js/counter.js` | `js/counter.js` | `application/javascript` |
-
-Para cada archivo, en **Propiedades** → **Metadatos** → añade el `Content-Type` correspondiente.
-
-### 7.6 URL del sitio
-
-La URL del hosting estático de S3 tiene este formato:
-
-```
-http://cloud-cv-mallorca-frontend-<ACCOUNT_ID>.s3-website-us-east-1.amazonaws.com
-```
-
-La encuentras en: bucket → **Propiedades** → **Alojamiento de sitios web estáticos** → **Endpoint del sitio web del bucket**.
-
----
-
-## 8. Verificación final
+## 7. Verificación final
 
 ### Probar la API directamente
 
@@ -422,7 +339,7 @@ Respuesta esperada:
 
 ### Verificar el frontend
 
-1. Abre la URL de Amplify o S3 en el navegador
+1. Abre la URL de Amplify en el navegador
 2. El contador debe aparecer con el número actual de visitas
 3. Recarga la página — el número debe incrementarse
 
@@ -434,7 +351,7 @@ Cada invocación genera un log con el evento recibido y el resultado.
 
 ---
 
-## 9. Route 53 — Subdominio `cv.atercates.cat` y registro MX
+## 8. Route 53 — Subdominio `cv.atercates.cat` y registro MX
 
 Esta sección explica cómo apuntar `cv.atercates.cat` a tu app de Amplify usando Route 53 como DNS, y cómo añadir un registro MX al dominio.
 
@@ -604,7 +521,6 @@ nslookup -type=MX atercates.cat
 | Lambda | `cloud-cv-mallorca-counter` |
 | API Gateway | `cloud-cv-mallorca-api` (stage: `prod`) |
 | Amplify | App conectada a rama `main` de GitHub |
-| S3 (alternativa) | `cloud-cv-mallorca-frontend-<ACCOUNT_ID>` |
 | CloudWatch Logs | `/aws/lambda/cloud-cv-mallorca-counter` (14 días) |
 | IAM Role | `LabRole` (preexistente) |
 | Route 53 | Zona alojada `atercates.cat` |
